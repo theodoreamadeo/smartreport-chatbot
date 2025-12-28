@@ -1,25 +1,55 @@
 from app.services.telegram_client import send_message
+from app.services.openai_client import analyze_report
+from app.services.excel_logging import log_report_to_excel
+
+# Track users in report mode
+users_in_report_mode = set()
 
 # Handle command
-async def handle_command(chat_id: int, user: str, text: str):
-    """
-    Decide what to do based on the incoming command text.
-    Returns True if handled, False if ignored.
-    """
-    # Command: /start to show the features
-    # Need to polish the wording
+async def handle_command(chat_id: int, user: str, text: str) -> bool:
+    global users_in_report_mode
+    
     if text.startswith("/start"):
-
         reply_markup = {
             "inline_keyboard": [
                 [
-                    {"text": "Ask", "url": "https://www.google.com/"},
-                    {"text": "Report", "callback_data": "issue_report"},
+                    {"text": "Submit Report", "callback_data": "issue_report"},
                 ]
             ]
         }
-        await send_message(chat_id, "Choose an option:", reply_markup=reply_markup)
-        return {"ok": True}
+        await send_message(chat_id, "Welcome! Click below to submit an issue report:", reply_markup=reply_markup)
+        return True
     
-    # Not a known command
+    # Check if user is in report mode
+    if user in users_in_report_mode:
+        # Process the report
+        await send_message(chat_id, "🔄 Analyzing your report with AI...")
+        
+        # Send to OpenAI
+        ai_result = await analyze_report(text)
+        # print (f"ai_result: {ai_result}")
+        
+        if ai_result and ai_result.get("success"):
+            # Log to Excel
+            logged = await log_report_to_excel(
+                reporter=user,
+                type = ai_result["type"].split(",")[0].strip(),
+                equipment = ai_result["type"].split(",")[1].strip(),
+                issue_summary = ai_result["type"].split(",")[2].strip()
+            )
+            
+            if logged:
+                await send_message(
+                    chat_id,
+                    f"✅ Report submitted successfully!\n\n📊 AI Analysis:\n{ai_result['type']}"
+                )
+            else:
+                await send_message(chat_id, "❌ Error saving report. Please try again.")
+        else:
+            await send_message(chat_id, "❌ Error analyzing report. Please try again.")
+        
+        # Remove user from report mode
+        users_in_report_mode.discard(user)
+        return True
+    
     return False

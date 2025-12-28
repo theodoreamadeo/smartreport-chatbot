@@ -9,6 +9,7 @@ class FromUser(BaseModel):
     id: int
     is_bot: bool
     first_name: Optional[str] = None
+    last_name: Optional[str] = None
     username: Optional[str] = None
 
 class Message(BaseModel):
