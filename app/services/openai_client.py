@@ -11,21 +11,6 @@ async def analyze_report (report_text: str) -> dict:
     allowed_types = ["DATA_PROB", "HARDWARE", "SOFTWARE", "MISMATCH", "OTHERS", "UNSURE"]
 
     # # Define the system prompt for the OpenAI model
-    # system_prompt = (
-    #     "You have an expertise in classifying any issues in Semiconductor manufacturing daily operations.\n"
-    #     "You will receive a report from a user describing an issue they are facing.\n"
-    #     "Analyze the report and classify the issue into one of the predefined types.\n"
-    #     "Return ONLY the type result, without any additional text.\n"
-    #     f"Allowed issue types: {', '.join(allowed_types)}.\n"
-    #     "Category definitions:\n"
-    #     "- DATA_PROB: any data mismatch, logging, count errors, recipe name mismatch, etc.\n"
-    #     "- HARDWARE: any physical failures, sensors, motors, arms, grippers, mechanical jams, etc.\n"
-    #     "- SOFTWARE: any software bugs, configuration, version issues, communication errors, etc.\n"
-    #     "- MISMATCH: any ID / lane / lot mismatch type cases, etc.\n"
-    #     "- OTHERS: anything that clearly does not fit above.\n"
-    #     "- UNSURE: description too vague to decide.\n"
-    # )
-
     system_prompt = (
         "You have an expertise in classifying any issues in Semiconductor manufacturing daily operations.\n"
         "You will receive a report from a user describing an issue they are facing.\n"

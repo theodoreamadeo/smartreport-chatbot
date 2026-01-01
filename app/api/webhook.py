@@ -40,7 +40,7 @@ async def telegram_webhook(update: Update):
                 json={
                     "callback_query_id": callback_id,
                     "text": "Preparing report form...",
-                    "show_alert": False
+                    "show_alert": True
                 }
             )
         
