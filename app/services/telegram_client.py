@@ -5,7 +5,7 @@ from app.core.config import setting
 TELEGRAM_API_BASE = f"https://api.telegram.org/bot{setting.telegram_token}"
 
 # Send message 
-async def send_message (chat_id: int | str, text: str, reply_markup: Optional[Dict[str, Any]] = None) -> None:
+async def send_message (chat_id: int | str, text: str, reply_markup: Optional[Dict[str, Any]] = None, parse_mode: Optional[str] = None) -> None:
         
         # Prepare the json payload
         json_payload: Dict[str, Any] = {
@@ -15,6 +15,9 @@ async def send_message (chat_id: int | str, text: str, reply_markup: Optional[Di
 
         if reply_markup is not None:
             json_payload["reply_markup"] = reply_markup
+
+        if parse_mode is not None:
+            json_payload["parse_mode"] = parse_mode
         
         async with httpx.AsyncClient(timeout=10) as client:
               response = await client.post(
@@ -25,7 +28,7 @@ async def send_message (chat_id: int | str, text: str, reply_markup: Optional[Di
               if not result.get("ok"):
                   print(f"❌ Failed to send message: {result}")
               return result
-
+        
 async def answer_callback_query(
     callback_query_id: str,
     text: str | None = None,

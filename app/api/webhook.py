@@ -1,7 +1,7 @@
 # app/api/webhook.py
 from fastapi import APIRouter, Request
 from app.services.command_handler import handle_command, users_in_report_mode
-from app.services.telegram_client import send_message
+from app.services.telegram_client import send_message, answer_callback_query
 from app.models.telegram_update import Update
 import httpx
 from app.core.config import setting
@@ -34,22 +34,15 @@ async def telegram_webhook(update: Update):
         user = f"{callback.from_user.first_name or ''} {callback.from_user.last_name or ''}".strip() or str(callback.from_user.username)
 
         # Answer the callback query first
-        async with httpx.AsyncClient() as client:
-            await client.post(
-                f"https://api.telegram.org/bot{setting.telegram_token}/answerCallbackQuery",
-                json={
-                    "callback_query_id": callback_id,
-                    "text": "Preparing report form...",
-                    "show_alert": True
-                }
-            )
+        await answer_callback_query(callback_query_id=callback_id, text="Please wait for a moment.", show_alert=True)
         
         # Handle the callback data
         if data == "issue_report":
             users_in_report_mode.add(user)
             await send_message(
                 chat_id, 
-                "📝 Please type your issue report below.\n\nInclude:\n• What happened\n• When it happened\n• Any error messages\n\nI'll analyze it with AI!"
+                "<b>Please type your issue report below.</b>\n\nInclude the following details where applicable:\n• What happened (symptoms and impact)\n• When it happened (date, time, and shift)\n• Equipment impacted\n• Lot ID (if relevant)\n• Any alarms, error codes, or log messages\n\n<b><u><i>The more specific the information, the faster we can triage and support.</i></u></b>",
+                parse_mode="HTML"
             )
         
         return {"ok": True}

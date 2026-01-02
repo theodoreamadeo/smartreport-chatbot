@@ -14,16 +14,18 @@ async def handle_command(chat_id: int, user: str, text: str) -> bool:
             "inline_keyboard": [
                 [
                     {"text": "Submit Report", "callback_data": "issue_report"},
+                    {"text": "Ask Bot", "callback_data": "ask_question"}
                 ]
             ]
         }
-        await send_message(chat_id, "Welcome! Click below to submit an issue report:", reply_markup=reply_markup)
+        await send_message(chat_id, f"<b>Welcome, {user}!</b>\n\nWrite any equipment, process, or facility issues here for timely follow-up.\n\nSelect an option below to proceed:", reply_markup=reply_markup, parse_mode="HTML")
+
         return True
     
     # Check if user is in report mode
     if user in users_in_report_mode:
         # Process the report
-        await send_message(chat_id, "🔄 Analyzing your report with AI...")
+        await send_message(chat_id, "<b>Wait for a second, analyzing your report!</b>", parse_mode="HTML")
         
         # Send to OpenAI
         ai_result = await analyze_report(text)
@@ -38,15 +40,17 @@ async def handle_command(chat_id: int, user: str, text: str) -> bool:
                 issue_summary = ai_result["type"].split(",")[2].strip()
             )
             
+            # Development: Print AI result
             if logged:
                 await send_message(
                     chat_id,
-                    f"✅ Report submitted successfully!\n\n📊 AI Analysis:\n{ai_result['type']}"
+                    f"<b>Report submitted successfully!</b>\n\n<b>Result:</b>\n• Reporter: {user}\n• Type: {ai_result['type'].split(',')[0].strip()}\n• Equipment: {ai_result['type'].split(',')[1].strip()}\n• Issue Summary: {ai_result['type'].split(',')[2].strip()}\n\nThank you for your report. Our team will review it and get back to you if needed.",
+                    parse_mode="HTML"
                 )
             else:
-                await send_message(chat_id, "❌ Error saving report. Please try again.")
+                await send_message(chat_id, "Error saving report. Please try again.")
         else:
-            await send_message(chat_id, "❌ Error analyzing report. Please try again.")
+            await send_message(chat_id, "Error analyzing report. Please try again.")
         
         # Remove user from report mode
         users_in_report_mode.discard(user)
