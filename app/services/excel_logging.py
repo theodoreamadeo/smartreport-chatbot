@@ -5,6 +5,9 @@ from pathlib import Path
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
+# Make sure this import is at the top
+from app.services.vector_db import vector_db
+
 EXCEL_FILE = "logs/ALuL Issue Tracking.xlsx"
 
 def excel_checker ():
@@ -70,19 +73,16 @@ async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_su
 
             # Define color for each type
             color_map = {
-                "DATA_PROB": "FFFF00",    # Yellow
-                "HARDWARE": "FF0000",     # Red
-                "SOFTWARE": "0000FF",     # Blue
-                "MISMATCH": "FFA500",     # Orange
-                "OTHERS": "808080",       # Gray
-                "UNSURE": "FFFFFF"        # White
+                "DATA_PROB": "FFFF00",
+                "HARDWARE": "FF0000",
+                "SOFTWARE": "0000FF",
+                "MISMATCH": "FFA500",
+                "OTHERS": "808080",
+                "UNSURE": "FFFFFF"
             }
 
-            # Get color based on type (default to white if type not found)
             fill_color = color_map.get(type.upper(), "FFFFFF")
             fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
-            
-            # Apply color only to the Type cell (column C) in the current row
             sheet[f"C{current_row}"].fill = fill
 
             main_font = Font(name="Apos Narrow", size=9)
@@ -90,8 +90,17 @@ async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_su
                 cell.font = main_font
         
         wb.save(EXCEL_FILE)
+        print("✅ Saved to Excel")
+        
+        # CRITICAL: Refresh vector database immediately after saving
+        print("🔄 Refreshing vector database...")
+        vector_db.load_excel_to_vectordb(EXCEL_FILE)
+        print("✅ Vector database refreshed")
+        
         return True
         
     except Exception as e:
         print(f"Error logging to Excel: {e}")
+        import traceback
+        traceback.print_exc()
         return False

@@ -26,7 +26,7 @@ async def send_message (chat_id: int | str, text: str, reply_markup: Optional[Di
               )
               result = response.json()
               if not result.get("ok"):
-                  print(f"❌ Failed to send message: {result}")
+                  print(f"Failed to send message: {result}")
               return result
         
 async def answer_callback_query(

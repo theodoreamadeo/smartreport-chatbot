@@ -6,3 +6,5 @@ pydantic
 pydantic-settings
 openpyxl
 python-dotenv
+chromadb
+pandas
