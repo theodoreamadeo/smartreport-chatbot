@@ -1,6 +1,6 @@
 # app/api/webhook.py
 from fastapi import APIRouter, Request
-from app.services.command_handler import handle_command, users_in_report_mode, users_in_ask_mode
+from app.services.command_handler import handle_command, users_in_report_mode
 from app.services.telegram_client import send_message, answer_callback_query
 from app.models.telegram_update import Update
 import httpx
@@ -44,13 +44,13 @@ async def telegram_webhook(update: Update):
                 "<b>Please type your issue report below.</b>\n\nInclude the following details where applicable:\n• What happened (symptoms and impact)\n• When it happened (date, time, and shift)\n• Equipment impacted\n• Lot ID (if relevant)\n• Any alarms, error codes, or log messages\n\n<b><u><i>The more specific the information, the faster we can triage and support.</i></u></b>",
                 parse_mode="HTML"
             )
-        elif data == "ask_question":
-            users_in_ask_mode.add(user)
-            await send_message(
-                chat_id,
-                "<b>Please type your question below.</b>\n\nYou can ask about equipment, processes, or facility-related queries, and I'll do my best to assist you!",
-                parse_mode="HTML"
-            )
+        # elif data == "ask_question":
+        #     users_in_ask_mode.add(user)
+        #     await send_message(
+        #         chat_id,
+        #         "<b>Please type your question below.</b>\n\nYou can ask about equipment, processes, or facility-related queries, and I'll do my best to assist you!",
+        #         parse_mode="HTML"
+        #     )
         
         return {"ok": True}
 
