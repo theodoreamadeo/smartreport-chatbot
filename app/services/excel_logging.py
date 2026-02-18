@@ -5,8 +5,7 @@ from pathlib import Path
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
-# Make sure this import is at the top
-from app.services.vector_db import vector_db
+# from app.services.vector_db import vector_db
 
 EXCEL_FILE = "logs/ALuL Issue Tracking.xlsx"
 
@@ -25,7 +24,7 @@ def excel_checker ():
             sheet.title = "Production Tracking"
         
         # Add headers
-        headers = ["Date", "Reporter", "Type", "Equipment", "Issue Summary"]
+        headers = ["Date", "Reporter", "Type", "Equipment", "Issue Summary", "Severity"]
         if sheet is not None:
             sheet.append(headers)
 
@@ -39,14 +38,14 @@ def excel_checker ():
                 cell.alignment = header_alignment
             
             # Create table
-            tab = Table(displayName="IssueTrackingTable", ref="A1:E1")
+            tab = Table(displayName="IssueTrackingTable", ref="A1:F1")
             style = TableStyleInfo(name="None", showFirstColumn=False, showLastColumn=False, showRowStripes=True, showColumnStripes=False)
             tab.tableStyleInfo = style
             sheet.add_table(tab)
 
         wb.save(EXCEL_FILE)
 
-async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_summary: str):
+async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_summary: str, severity: str):
     """Log the report and AI analysis to Excel"""
     try:
         excel_checker()
@@ -59,9 +58,9 @@ async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_su
             reporter, 
             type,
             equipment,
-            issue_summary
+            issue_summary, 
+            severity
         ]
-        print (row_data)
 
         if sheet is not None:
             sheet.append(row_data)
@@ -69,7 +68,7 @@ async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_su
             # Update table range to include new row
             current_row = sheet.max_row
             for table in sheet.tables.values():
-                table.ref = f"A1:E{current_row}"
+                table.ref = f"A1:F{current_row}"
 
             # Define color for each type
             color_map = {
@@ -90,12 +89,11 @@ async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_su
                 cell.font = main_font
         
         wb.save(EXCEL_FILE)
-        print("✅ Saved to Excel")
         
-        # CRITICAL: Refresh vector database immediately after saving
-        print("🔄 Refreshing vector database...")
-        vector_db.load_excel_to_vectordb(EXCEL_FILE)
-        print("✅ Vector database refreshed")
+        # # CRITICAL: Refresh vector database immediately after saving
+        # print("🔄 Refreshing vector database...")
+        # vector_db.load_excel_to_vectordb(EXCEL_FILE)
+        # print("✅ Vector database refreshed")
         
         return True
         

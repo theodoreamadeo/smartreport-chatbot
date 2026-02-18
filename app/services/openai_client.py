@@ -1,4 +1,5 @@
 import httpx
+import json
 from app.core.config import setting
 from app.services.vector_db import vector_db
 
@@ -55,7 +56,6 @@ Formatting rules:
 """
 
         # 4. Send to OpenAI for analysis
-        print("🤖 Sending request to OpenAI...")
         async with httpx.AsyncClient(timeout=120) as client:
             response = await client.post(
                 "https://api.openai.com/v1/chat/completions",
@@ -99,79 +99,85 @@ Formatting rules:
         traceback.print_exc()
         return error_msg
 
-# async def analyze_report (report_text: str) -> dict:
-#     """
-#     Send the report message from user to OpenAI API for analysis.
-#     Return structured data about the issue.
-#     """
+async def type_classification (issue_description: str) -> dict:
+    """Return structured data about the issue"""
 
-#     # Define classification categories
-#     allowed_types = ["DATA_PROB", "HARDWARE", "SOFTWARE", "MISMATCH", "OTHERS", "UNSURE"]
+    # Define classification categories
+    allowed_types = ["DATA_PROB", "HARDWARE", "SOFTWARE", "MISMATCH", "OTHERS", "UNSURE"]
+    allowed_severities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 
-#     # # Define the system prompt for the OpenAI model
-#     system_prompt = (
-#         "You have an expertise in classifying any issues in Semiconductor manufacturing daily operations.\n"
-#         "You will receive a report from a user describing an issue they are facing.\n"
-#         "Analyze the report and classify the issue into multiple fields.\n\n"
-#         "There are 3 fields to return, such as types of issues (following pre-defined types), equipment affected (if any), and summary of the issue in one sentence.\n\n"
-#         "For the given issue report, return as a STRING separated by comma.\n\n"
-#         "Details of the 3 fields to return:\n"
-#         "1) Types of issues: classify the issue into one of the predefined types.\n"
-#         f"Allowed issue types: {', '.join(allowed_types)}.\n"
-#         "Category definitions:\n"
-#         "- DATA_PROB: issues caused by incorrect, missing, delayed, or inconsistent data in the system. Example: TRAYSTACK TRANSFERRED TO MINI ERK BUT DATA STILL AT AMR002.\n"
-#         "- HARDWARE: issues caused by physical equipment or components malfunctioning. Such as amr misplacing traystacks and amr deadlock, hanging at a certain point or emergency stopping.\n"
-#         "- SOFTWARE: issues caused by application logic, system code, or configuration errors. Usually associated with robot arm or gripper arm. \n"
-#         "- MISMATCH: occurs when barcode data on a physical box does not tally with the backend system at Infineon Technologies.  Issue also may occurs when the traystack is placed on ERK and the backend system does not detect any association to the traystack. Can occur in DPP and ERK.\n"
-#         "- OTHERS: issues where the root cause has not yet been identified. Such as Insufficient information Investigation still ongoing. \n"
-#         "- UNSURE: description too vague to decide.\n\n"
-#         "2) Equipment affected: specify the equipment name or ID if mentioned in the report, otherwise return 'Unknown'.\n\n"
-#         "3) Summary: provide a concise one-sentence summary of the issue described in the report.\n"
-#     )
+    # Define the system prompt for the OpenAI model
+    system_prompt = (
+        "You have an expertise in classifying any issues in Semiconductor manufacturing daily operations.\n"
+        "You will receive a report from a user describing an issue they are facing.\n"
+        "Analyze the report and classify the issue into multiple fields.\n\n"
+        "There are 4 fields to return, such as types of issues (following pre-defined types), equipment affected (if any), summary of the issue in one sentence, and severity level.\n\n"
+        "For the given issue report, return as a STRING separated by comma.\n\n"
+        "Details of the 4 fields to return:\n"
+        "1) Types of issues: classify the issue into one of the predefined types.\n"
+        f"Allowed issue types: {', '.join(allowed_types)}.\n"
+        "Category definitions:\n"
+        "- DATA_PROB: issues caused by incorrect, missing, delayed, or inconsistent data in the system. Example: TRAYSTACK TRANSFERRED TO MINI ERK BUT DATA STILL AT AMR002.\n"
+        "- HARDWARE: issues caused by physical equipment or components malfunctioning. Such as amr misplacing traystacks and amr deadlock, hanging at a certain point or emergency stopping.\n"
+        "- SOFTWARE: issues caused by application logic, system code, or configuration errors. Usually associated with robot arm or gripper arm. \n"
+        "- MISMATCH: occurs when barcode data on a physical box does not tally with the backend system at Infineon Technologies.  Issue also may occurs when the traystack is placed on ERK and the backend system does not detect any association to the traystack. Can occur in DPP and ERK.\n"
+        "- OTHERS: issues where the root cause has not yet been identified. Such as Insufficient information Investigation still ongoing. \n"
+        "- UNSURE: description too vague to decide.\n\n"
+        "2) Equipment affected: specify the equipment name or ID if mentioned in the report, otherwise return 'Unknown'.\n\n"
+        "3) Summary: provide a concise one-sentence summary of the issue described in the report.\n\n"
+        "4) Severity: classify the severity of the issue into one of the predefined levels.\n"
+        f"Allowed severity levels: {', '.join(allowed_severities)}.\n"
+        "Severity definitions:\n"
+        "- LOW: Minor issue with no production impact. Cosmetic errors, informational logs, or issues that can be deferred to the next maintenance window.\n"
+        "- MEDIUM: Moderate issue affecting a single equipment or process but with a workaround available. Production can continue with reduced efficiency.\n"
+        "- HIGH: Significant issue affecting multiple equipment or processes. Production is partially impacted and requires attention within hours.\n"
+        "- CRITICAL: Severe issue causing production line stoppage, safety hazard, data loss, or complete system failure. Requires immediate intervention. Examples: AMR collision, full system outage, safety emergency stop affecting multiple units, unrecoverable data corruption.\n\n"
+        "Return format: <type>, <equipment>, <summary>, <severity>\n"
+        "Example: HARDWARE, AMR002, AMR002 is deadlocked at station 5 and blocking the production line, CRITICAL\n"
+    )
 
-
-#     try:
-#         async with httpx.AsyncClient() as client:
-#             response = await client.post(
-#                 "https://api.openai.com/v1/chat/completions",
-#                 headers = {
-#                     "Authorization": f"Bearer {setting.openai_api_key}",
-#                     "Content-Type": "application/json"
-#                 },
-#                 json = {
-#                     "model": "gpt-4o-mini",
-#                     "messages": [
-#                         {
-#                             "role":"system",
-#                             "content": system_prompt
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers = {
+                    "Authorization": f"Bearer {setting.openai_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json = {
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {
+                            "role":"system",
+                            "content": system_prompt
                             
-#                         },
-#                         {
-#                             "role":"user",
-#                             "content": f"Analyze this issue report: {report_text}"
-#                         }
-#                     ],
-#                     "temperature": 0.1,
-#                 }
-#             )
+                        },
+                        {
+                            "role":"user",
+                            "content": f"Analyze this issue report: {issue_description}"
+                        }
+                    ],
+                    "temperature": 0.1,
+                }
+            )
 
-#             result = response.json()
-#             if response.status_code != 200:
-#                 raise Exception(f"OpenAI API error: {result}")
+            result = response.json()
+            if response.status_code != 200:
+                raise Exception(f"OpenAI API error: {result}")
             
-#             ai_response = result['choices'][0]['message']['content']
-#             return {
-#                 "issue_report": report_text,
-#                 "type": ai_response,
-#                 "success": True
-#             }
+            ai_response = result['choices'][0]['message']['content']
+            return {
+                "issue_report": issue_description,
+                "type": ai_response,
+                "success": True
+            }
         
-#     except Exception as e:
-#         return {
-#             "issue_report": report_text,
-#             "ai_analysis": str(e),
-#             "success": False
-#         }
+    except Exception as e:
+        return {
+            "issue_report": issue_description,
+            "ai_analysis": str(e),
+            "success": False
+        }
 
 # # Query the Excel knowledge base for relevant information
 # async def query_knowledge_base (question: str) -> str:
