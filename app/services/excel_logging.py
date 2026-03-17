@@ -24,7 +24,8 @@ def excel_checker ():
             sheet.title = "Production Tracking"
         
         # Add headers
-        headers = ["Date", "Reporter", "Type", "Equipment", "Issue Summary", "Severity"]
+        headers = ["log_id", "date_reported", "reporter", "issue_type", "equipment_id", "issue_summary", "severity"]
+
         if sheet is not None:
             sheet.append(headers)
 
@@ -38,12 +39,22 @@ def excel_checker ():
                 cell.alignment = header_alignment
             
             # Create table
-            tab = Table(displayName="IssueTrackingTable", ref="A1:F1")
+            tab = Table(displayName="IssueTrackingTable", ref="A1:G1")
             style = TableStyleInfo(name="None", showFirstColumn=False, showLastColumn=False, showRowStripes=True, showColumnStripes=False)
             tab.tableStyleInfo = style
             sheet.add_table(tab)
 
         wb.save(EXCEL_FILE)
+
+def get_next_log_id(sheet) -> int:
+    for r in range(sheet.max_row, 1, -1):
+        v = sheet.cell(row=r, column=1).value
+        if isinstance(v, int):
+            return v + 1
+        if isinstance(v, str) and v.strip().isdigit():
+            return int(v.strip()) + 1
+
+    return max(1, sheet.max_row)
 
 async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_summary: str, severity: str):
     """Log the report and AI analysis to Excel"""
@@ -52,13 +63,16 @@ async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_su
         
         wb = openpyxl.load_workbook(EXCEL_FILE)
         sheet = wb.active
-        
+
+        next_id = get_next_log_id(sheet)
+
         row_data = [
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            reporter, 
+            f"LOG_{next_id}",                              # log_id
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # date_reported
+            reporter,
             type,
             equipment,
-            issue_summary, 
+            issue_summary,
             severity
         ]
 
@@ -68,7 +82,7 @@ async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_su
             # Update table range to include new row
             current_row = sheet.max_row
             for table in sheet.tables.values():
-                table.ref = f"A1:F{current_row}"
+                table.ref = f"A1:G{current_row}"
 
             # Define color for each type
             color_map = {
@@ -82,7 +96,7 @@ async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_su
 
             fill_color = color_map.get(type.upper(), "FFFFFF")
             fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
-            sheet[f"C{current_row}"].fill = fill
+            sheet[f"D{current_row}"].fill = fill
 
             main_font = Font(name="Apos Narrow", size=9)
             for cell in sheet[current_row]:

@@ -3,12 +3,34 @@ from app.services.telegram_client import send_message
 from app.services.openai_client import handle_issue_report, type_classification
 from app.services.excel_logging import log_report_to_excel
 from app.core.config import setting
+import re
 
 # Track users in report mode
 users_in_report_mode = set()
 # users_in_ask_mode = set()
 
 supervisor_chat_id = setting.supervisor_chat_id
+
+def normalize_equipment_id (equipment: str) -> str:
+    if not equipment:
+        return "UNKNOWN"
+    
+    eq = equipment.strip().upper().replace(" ", "").replace("_", "")
+    if  eq in {"Unknown", "N/A", "NA", "-", "NONE", "NULL", ""}:
+        return "UNKNOWN"
+    
+    final_eq = re.fullmatch(r"([A-Z]+)-?(\d+)", eq)
+    if  final_eq:
+        machine = final_eq.group(1)
+        number = int(final_eq.group(2))
+        return f"{machine}-{number:03d}"
+    
+    # If machine code only (no number), keep standardized uppercase
+    if re.fullmatch(r"[A-Z]+", eq):
+        return eq
+    
+    # Fallback: return original cleaned input
+    return eq
 
 # Handle command
 async def handle_command(chat_id: int, user: str, text: str) -> bool:
@@ -41,12 +63,14 @@ async def handle_command(chat_id: int, user: str, text: str) -> bool:
         )
 
         classification = await type_classification(text)
+        standardized_equipment = normalize_equipment_id(classification["type"].split(",")[1].strip()) 
+
         if classification and classification.get("success"):
             # Loge to the excel file
             await log_report_to_excel(
                 reporter=user, 
                 type = classification["type"].split(",")[0].strip(),
-                equipment = classification["type"].split(",")[1].strip(),
+                equipment = standardized_equipment,
                 issue_summary = classification["type"].split(",")[2].strip(),
                 severity = classification["type"].split(",")[3].strip()
             )
@@ -56,7 +80,7 @@ async def handle_command(chat_id: int, user: str, text: str) -> bool:
                 if supervisor_chat_id:
                     await send_message(
                         supervisor_chat_id,
-                        f"🚨 <b>Critical Issue Reported</b> 🚨\n\n<b>Reporter:</b> {user}\n<b>Type:</b> {classification['type'].split(',')[0].strip()}\n<b>Equipment:</b> {classification['type'].split(',')[1].strip()}\n<b>Issue Summary:</b> {classification['type'].split(',')[2].strip()}\n<b>Severity:</b> {classification['type'].split(',')[3].strip()}\n\nPlease review and take necessary action immediately.",
+                        f"🚨 <b>Critical Issue Reported</b> 🚨\n\n<b>Reporter:</b> {user}\n<b>Type:</b> {classification['type'].split(',')[0].strip()}\n<b>Equipment:</b> {standardized_equipment}\n<b>Issue Summary:</b> {classification['type'].split(',')[2].strip()}\n<b>Severity:</b> {classification['type'].split(',')[3].strip()}\n\nPlease review and take necessary action immediately.",
                         parse_mode="HTML"
                     )
                 print ("🚨 Critical issue reported, alert sent to supervisor! 🚨")
