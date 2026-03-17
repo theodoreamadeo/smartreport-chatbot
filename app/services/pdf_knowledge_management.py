@@ -204,12 +204,7 @@ class KnowledgeBaseManager:
             # Add to vector database
             texts = [chunk["text"] for chunk in chunks]
             metadatas = [chunk["metadata"] for chunk in chunks]
-            vector_db.add_documents(texts, metadatas)
-            
-            # Verify the addition
-            count_after = vector_db.collection.count()
-            print(f"    ✓ Extracted {len(chunks)} paragraphs")
-            print(f"    📊 Collection now has {count_after} total documents")
+            vector_db.add_pdf_documents(texts, metadatas)
             
             # Update metadata
             metadata[str(pdf_file)] = {
@@ -220,7 +215,6 @@ class KnowledgeBaseManager:
             }
             
             total_chunks += len(chunks)
-            print(f"    ✓ Extracted {len(chunks)} paragraphs")
         
         self._save_metadata(metadata)
         print(f"✅ Successfully processed {total_chunks} paragraphs from {len(files_to_process)} file(s).")

@@ -1,13 +1,12 @@
 from app.services.telegram_client import send_message
-# from app.services.openai_client import analyze_report, query_knowledge_base, refresh_vector_db
-from app.services.openai_client import handle_issue_report, type_classification
+from app.services.openai_client import handle_issue_report, type_classification, handle_logging_query, refresh_vector_db
 from app.services.excel_logging import log_report_to_excel
 from app.core.config import setting
 import re
 
 # Track users in report mode
 users_in_report_mode = set()
-# users_in_ask_mode = set()
+users_in_ask_mode = set()
 
 supervisor_chat_id = setting.supervisor_chat_id
 
@@ -92,24 +91,24 @@ async def handle_command(chat_id: int, user: str, text: str) -> bool:
         users_in_report_mode.discard(user)
         return True
     
-    # elif user in users_in_ask_mode:
-    #     # Auto refresh vector DB
-    #     await refresh_vector_db()
+    elif user in users_in_ask_mode:
+        # Auto refresh vector DB
+        await refresh_vector_db()
 
-    #     # Process the question
-    #     await send_message(chat_id, "<b>Wait for a second, searching for answers!</b>", parse_mode="HTML")
+        # Process the question
+        await send_message(chat_id, "<b>Wait for a second, searching for answers!</b>", parse_mode="HTML")
         
-    #     # Query knowledge base
-    #     ai_answer = await query_knowledge_base(text)
+        # Query knowledge base
+        ai_answer = await handle_logging_query(text)
         
-    #     await send_message(
-    #         chat_id,
-    #         f"<b>Answer to your question:</b>\n\n{ai_answer}",
-    #         parse_mode="HTML"
-    #     )
+        await send_message(
+            chat_id,
+            f"<b>Answer to your question:</b>\n\n{ai_answer}",
+            parse_mode="HTML"
+        )
         
-    #     # Remove user from ask mode
-    #     users_in_ask_mode.discard(user)
-    #     return True
+        # Remove user from ask mode
+        users_in_ask_mode.discard(user)
+        return True
     
     return False

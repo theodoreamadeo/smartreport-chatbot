@@ -1,15 +1,17 @@
 import httpx
+import asyncio
 import json
 from app.core.config import setting
 from app.services.vector_db import vector_db
 
+# PDF Knowledge Base
 async def handle_issue_report (issue_description: str, user_info: dict) -> str:
     """Handle issue report with immediate solution."""
     
     try:
         # 1. Query vector database for relevant knowledge
         print(f"🔍 Querying knowledge base for: {issue_description[:100]}...")
-        relevant_docs = vector_db.query_knowledge_base(issue_description, n_results=3)
+        relevant_docs = vector_db.query_pdf_knowledge_base(issue_description, n_results=3)
         print(f"📚 Found {len(relevant_docs)} relevant documents")
 
         # 2. Build context from retrieved documents
@@ -179,65 +181,85 @@ async def type_classification (issue_description: str) -> dict:
             "success": False
         }
 
-# # Query the Excel knowledge base for relevant information
-# async def query_knowledge_base (question: str) -> str:
-#     try:
-#         # Search vector database
-#         relevant_docs = vector_db.search(question, n_results=5)
+# Query the Excel knowledge base for relevant information
+async def handle_logging_query (question: str) -> str:
+    timeout = httpx.Timeout(connect=10.0, read=90.0, write=30.0, pool=30.0)
+    retries = 3
+    last_error = None
 
-#         if not relevant_docs:
-#             return "No relevant information found in the knowledge base."
+    try:
+        # Search vector database
+        relevant_docs = vector_db.query_excel_knowledge_base(question, n_results=5)
+
+        if relevant_docs:
+            context = "\n\n".join([
+                f"Record {i+1}:\n{doc['text']}"
+                for i, doc in enumerate(relevant_docs)
+            ])
+        else:
+            context = "No matching records found in the issue history."
         
-#         # Build context from relevant reports
-#         context = "📊 <b>Relevant Historical Reports:</b>\n\n"
-#         for i, report in enumerate(relevant_docs, 1):
-#             context += f"<b>Report {i}:</b>\n{report['document']}\n\n"
-        
-#         # User prompt for OpenAI
-#         prompt = f"""Based on the following historical issue reports, please answer the user's question.\n{context}\nUser Question: {question}\n\nPlease provide a concise and helpful answer based on the historical data above. If you notice patterns or trends, mention them."""
+        # User prompt for OpenAI
+        prompt = f"""
+You are a data analyst assistant for a semiconductor manufacturing operation.
+You have access to historical issue records logged by operators.
+Answer the user's question using ONLY the records provided below.
 
-#         # Query OpenAI with context
-#         async with httpx.AsyncClient() as client:
-#             response = await client.post(
-#                 "https://api.openai.com/v1/chat/completions",
-#                 headers = {
-#                     "Authorization": f"Bearer {setting.openai_api_key}",
-#                     "Content-Type": "application/json"
-#                 },
-#                 json = {
-#                     "model": "gpt-4o-mini",
-#                     "messages": [
-#                         {
-#                             "role":"system",
-#                             "content": (
-#                                 "You are an expert assistant helping to answer user questions based on historical issue reports.\n"
-#                                 "Use the provided relevant reports to formulate a concise and accurate answer to the user's question."
-#                             )
-#                         },
-#                         {
-#                             "role":"user",
-#                             "content": prompt
-#                         }
-#                     ],
-#                     "temperature": 0.5,
-#                 }
-#             )
+Question: {question}
 
-#             result = response.json()
-#             if response.status_code != 200:
-#                 raise Exception(f"OpenAI API error: {result}")
-            
-#             ai_response = result['choices'][0]['message']['content']
-#             return ai_response
+Historical Records:
+{context}
+
+Rules:
+- Use Telegram HTML only: <b>, <i>, <u>, <code>
+- Never use <br>; use newline characters only.
+- Do NOT use Markdown
+- If records are insufficient, say so and state what info is missing
+- Keep the answer under 3000 characters
+"""
+
+        # Query OpenAI with context
+        for attempt in range(1, retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.post(
+                        "https://api.openai.com/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {setting.openai_api_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": "gpt-4o-mini",
+                            "messages": [
+                                {"role": "system", "content": "You are an expert assistant helping to answer user questions based on historical issue reports."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            "temperature": 0.3
+                        }
+                    )
+
+                result = response.json()
+                if response.status_code != 200:
+                    raise Exception(f"OpenAI API error: {result}")
+
+                return result["choices"][0]["message"]["content"]
+            except httpx.ReadTimeout as e:
+                last_error = e
+                if attempt < retries:
+                    await asyncio.sleep(1.5 * attempt)
+                else:
+                    return "The AI service is taking too long to respond right now. Please try again in a moment."
     
-#     except Exception as e:
-#         return f"Error querying knowledge base: {e}"
-
-# # Refresh the vector database from the latest Excel logs
-# async def refresh_vector_db () -> bool:
-#     try:
-#         vector_db.load_excel_to_vectordb()
-#         return True
-#     except Exception as e:
-#         print(f"Error refreshing vector DB: {e}")
-#         return False
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"Error querying knowledge base: {e}"
+    
+# Refresh the vector database from the latest Excel logs
+async def refresh_vector_db () -> bool:
+    try:
+        vector_db.load_excel_to_vectordb()
+        return True
+    except Exception as e:
+        print(f"Error refreshing vector DB: {e}")
+        return False
