@@ -1,6 +1,7 @@
 import httpx 
 from typing import Any, Dict, Optional
 from app.core.config import setting
+from pathlib import Path
 
 TELEGRAM_API_BASE = f"https://api.telegram.org/bot{setting.telegram_token}"
 
@@ -42,3 +43,20 @@ async def answer_callback_query(
 
     async with httpx.AsyncClient(timeout=10) as client:
         await client.post(f"{TELEGRAM_API_BASE}/answerCallbackQuery", json=payload)
+
+async def send_document(chat_id: int | str, file_path: str, caption: str | None = None) -> None:
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    data = {"chat_id": str(chat_id)}
+    if caption:
+        data["caption"] = caption
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        with open(path, "rb") as f:
+            files = {"document": (path.name, f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+            response = await client.post(f"{TELEGRAM_API_BASE}/sendDocument", data=data, files=files)
+            result = response.json()
+            if not result.get("ok"):
+                print(f"Failed to send document: {result}")

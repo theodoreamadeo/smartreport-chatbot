@@ -40,7 +40,8 @@ async def handle_command(chat_id: int, user: str, text: str) -> bool:
             "inline_keyboard": [
                 [
                     {"text": "Submit Report", "callback_data": "issue_report"},
-                    {"text": "Ask Bot", "callback_data": "ask_question"}
+                    {"text": "Ask Bot", "callback_data": "ask_question"},
+                    {"text": "Download Logs", "callback_data": "download_logs"}
                 ]
             ]
         }
