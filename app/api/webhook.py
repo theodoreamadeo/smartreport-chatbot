@@ -1,10 +1,12 @@
 # app/api/webhook.py
 from fastapi import APIRouter, Request
 from app.services.command_handler import handle_command, users_in_report_mode, users_in_ask_mode
-from app.services.telegram_client import send_message, answer_callback_query
+from app.services.telegram_client import send_message, answer_callback_query, send_document
+from app.services.excel_logging import EXCEL_FILE
 from app.models.telegram_update import Update
 import httpx
 from app.core.config import setting
+from pathlib import Path
 
 router = APIRouter()
 
@@ -51,7 +53,17 @@ async def telegram_webhook(update: Update):
                 "<b>Please type your question below.</b>\n\nYou can ask about equipment, processes, or facility-related queries, and I'll do my best to assist you!",
                 parse_mode="HTML"
             )
-        
+        elif data == "download_logs":
+            log_file = Path(EXCEL_FILE)
+            if not log_file.exists():
+                await send_message(chat_id, "No logs available yet.")
+            else:
+                await send_document(
+                    chat_id=chat_id,
+                    file_path=str(log_file),
+                    caption="Here is the latest issue log file."
+                )
+
         return {"ok": True}
 
 
