@@ -71,17 +71,12 @@ class VectorDBService:
         """Load all Excel data into vector database"""
         try:
             if not os.path.exists(excel_file):
-                print(f"❌ Excel file not found: {excel_file}")
+                print(f"Excel file not found: {excel_file}")
                 return
             
             df = pd.read_excel(excel_file)
             if df.empty:
                 return 0
-            print(f"📊 Loaded {len(df)} rows from Excel")
-            
-            # Print last 3 rows to verify latest data
-            print("Last 3 entries:")
-            print(df.tail(3))
             
             # Clear existing data
             existing = self.excel_collection.get()
@@ -119,23 +114,22 @@ class VectorDBService:
                     metadatas=metadatas,
                     ids=ids
                 )
-                print(f"✅ Added {len(documents)} reports to vector database")
                 
                 # Verify by checking collection count
                 count = self.excel_collection.count()
-                print(f"📈 Total documents in collection: {count}")
+                print(f"Total documents in collection: {count}")
 
             return len(documents)
         
         except Exception as e:
-            print(f"❌ Error loading Excel to VectorDB: {e}")
+            print(f"Error loading Excel to VectorDB: {e}")
             import traceback
             traceback.print_exc()
 
     def query_excel_knowledge_base(self, query: str, n_results: int = 5) -> List[dict]:
         count = self.excel_collection.count()
         if count == 0:
-            print("⚠️ Excel knowledge base is empty. Please load data first.")
+            print("Excel knowledge base is empty. Please load data first.")
             return []
         capped = min(n_results, count)
         results = self.excel_collection.query(query_texts=[query], n_results=capped)

@@ -70,7 +70,6 @@ class KnowledgeBaseManager:
         flush()
         return paragraphs
 
-    
     def _extract_section_title(self, paragraph: str):
         """
         Extract section title if paragraph starts with one.
@@ -114,7 +113,6 @@ class KnowledgeBaseManager:
             merged.append(carry)
 
         return merged
-
     
     def _clean_markdown(self, text: str) -> str:
         """
@@ -124,7 +122,6 @@ class KnowledgeBaseManager:
         # Remove heading hashes at line start
         text = re.sub(r"(?m)^#{1,6}\s+", "", text)
         return text.strip()
-    
     
     def process_pdf(self, pdf_path: Path, merge_small: bool = False) -> List[dict]:
         """Process a PDF and return paragraph-based chunks with metadata."""
@@ -165,7 +162,6 @@ class KnowledgeBaseManager:
 
         return all_chunks
 
-    
     def check_updates_needed(self) -> List[Path]:
         """Check which PDFs need to be processed."""
         metadata = self._load_metadata()
@@ -189,17 +185,13 @@ class KnowledgeBaseManager:
         files_to_process = self.check_updates_needed()
         
         if not files_to_process:
-            print("✅ Knowledge base is up to date.")
             return 0
         
-        print(f"📚 Processing {len(files_to_process)} PDF(s)...")
         metadata = self._load_metadata()
         total_chunks = 0
         
         for pdf_file in files_to_process:
-            print(f"  📄 Processing: {pdf_file.name}")
             chunks = self.process_pdf(pdf_file, merge_small=False)
-            print (chunks)
             
             # Add to vector database
             texts = [chunk["text"] for chunk in chunks]
@@ -217,5 +209,4 @@ class KnowledgeBaseManager:
             total_chunks += len(chunks)
         
         self._save_metadata(metadata)
-        print(f"✅ Successfully processed {total_chunks} paragraphs from {len(files_to_process)} file(s).")
         return total_chunks

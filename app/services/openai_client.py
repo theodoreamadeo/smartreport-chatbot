@@ -3,6 +3,7 @@ import asyncio
 import json
 from app.core.config import setting
 from app.services.vector_db import vector_db
+from datetime import date
 
 # PDF Knowledge Base
 async def handle_issue_report (issue_description: str, user_info: dict) -> str:
@@ -10,9 +11,7 @@ async def handle_issue_report (issue_description: str, user_info: dict) -> str:
     
     try:
         # 1. Query vector database for relevant knowledge
-        print(f"🔍 Querying knowledge base for: {issue_description[:100]}...")
         relevant_docs = vector_db.query_pdf_knowledge_base(issue_description, n_results=3)
-        print(f"📚 Found {len(relevant_docs)} relevant documents")
 
         # 2. Build context from retrieved documents
         if relevant_docs:
@@ -22,7 +21,6 @@ async def handle_issue_report (issue_description: str, user_info: dict) -> str:
             ])
         else:
             context = "No relevant documents found in the knowledge base."
-            print("⚠️ Warning: No documents found in knowledge base")
         
         # 3. Generate solution using OpenAI
         prompt = f"""
@@ -86,17 +84,14 @@ Formatting rules:
 
             if response.status_code != 200:
                 error_detail = response.json() if response.text else response.status_code
-                print(f"❌ OpenAI API error: {error_detail}")
                 raise Exception(f"OpenAI API error (status {response.status_code}): {error_detail}")
             
             result = response.json()
             ai_response = result['choices'][0]['message']['content']
-            print(f"✅ OpenAI response received ({len(ai_response)} chars)")
             return ai_response
     
     except Exception as e:
         error_msg = f"Error analyzing issue report: {str(e)}"
-        print(f"❌ {error_msg}")
         import traceback
         traceback.print_exc()
         return error_msg
@@ -129,6 +124,7 @@ async def type_classification (issue_description: str) -> dict:
         "3) Summary: provide a concise one-sentence summary of the issue described in the report.\n\n"
         "4) Severity: classify the severity of the issue into one of the predefined levels.\n"
         f"Allowed severity levels: {', '.join(allowed_severities)}.\n"
+        "You must choose only from the allowed severity levels based on the impact of the issue on production operations. If the report does not provide enough information to determine severity, choose the most appropriate level based on the potential impact.\n"
         "Severity definitions:\n"
         "- CRITICAL: Production stopped or major system failure affecting many machines or the whole line Multiple AMRs failing, conveyor system down, transfer system blocked for many stations.\n"
         "- HIGH: Machine or process cannot run but limited to one area or tool AMR cannot find path, tray not detected, handler error. Drop traystack, ic scattered, traystack damaged.\n"
@@ -152,7 +148,6 @@ async def type_classification (issue_description: str) -> dict:
                         {
                             "role":"system",
                             "content": system_prompt
-                            
                         },
                         {
                             "role":"user",
@@ -181,6 +176,8 @@ async def type_classification (issue_description: str) -> dict:
             "success": False
         }
 
+today = date.today().isoformat()
+
 # Query the Excel knowledge base for relevant information
 async def handle_logging_query (question: str) -> str:
     timeout = httpx.Timeout(connect=10.0, read=90.0, write=30.0, pool=30.0)
@@ -204,6 +201,8 @@ async def handle_logging_query (question: str) -> str:
 You are a data analyst assistant for a semiconductor manufacturing operation.
 You have access to historical issue records logged by operators.
 Answer the user's question using ONLY the records provided below.
+
+Today's date: {today}
 
 Question: {question}
 

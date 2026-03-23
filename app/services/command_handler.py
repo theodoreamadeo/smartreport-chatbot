@@ -80,11 +80,9 @@ async def handle_command(chat_id: int, user: str, text: str) -> bool:
                 if supervisor_chat_id:
                     await send_message(
                         supervisor_chat_id,
-                        f"🚨 <b>Critical Issue Reported</b> 🚨\n\n<b>Reporter:</b> {user}\n<b>Type:</b> {classification['type'].split(',')[0].strip()}\n<b>Equipment:</b> {standardized_equipment}\n<b>Issue Summary:</b> {classification['type'].split(',')[2].strip()}\n<b>Severity:</b> {classification['type'].split(',')[3].strip()}\n\nPlease review and take necessary action immediately.",
+                        f"<b>Critical Issue Reported</b>\n\n<b>Reporter:</b> {user}\n<b>Type:</b> {classification['type'].split(',')[0].strip()}\n<b>Equipment:</b> {standardized_equipment}\n<b>Issue Summary:</b> {classification['type'].split(',')[2].strip()}\n<b>Severity:</b> {classification['type'].split(',')[3].strip()}\n\nPlease review and take necessary action immediately.",
                         parse_mode="HTML"
                     )
-                print ("🚨 Critical issue reported, alert sent to supervisor! 🚨")
-
         else:
             await send_message(chat_id, "Error classifying report. Please try again.")
         

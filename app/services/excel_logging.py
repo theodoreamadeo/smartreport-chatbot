@@ -5,8 +5,6 @@ from pathlib import Path
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
-# from app.services.vector_db import vector_db
-
 EXCEL_FILE = "logs/ALuL Issue Tracking.xlsx"
 
 def excel_checker ():
@@ -102,13 +100,7 @@ async def log_report_to_excel(reporter: str, type: str, equipment: str, issue_su
             for cell in sheet[current_row]:
                 cell.font = main_font
         
-        wb.save(EXCEL_FILE)
-        
-        # # CRITICAL: Refresh vector database immediately after saving
-        # print("🔄 Refreshing vector database...")
-        # vector_db.load_excel_to_vectordb(EXCEL_FILE)
-        # print("✅ Vector database refreshed")
-        
+        wb.save(EXCEL_FILE)        
         return True
         
     except Exception as e:

@@ -9,7 +9,7 @@ from app.services.pdf_knowledge_management import KnowledgeBaseManager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup code
-    print("🚀 Starting up...")
+    print("Starting up the codebase")
     
     # Initialize vector DB
     vector_db_service = VectorDBService()
@@ -24,12 +24,12 @@ async def lifespan(app: FastAPI):
     app.state.vector_db = vector_db_service
     app.state.kb_manager = kb_manager
     
-    print(f"✅ Application started successfully! Processed {chunks_processed} chunks.")
+    print(f"Application started successfully! Processed {chunks_processed} chunks.")
     
     yield
     
     # Shutdown code (optional)
-    print("🛑 Shutting down...")
+    print("Shutting down the codebase")
 
 def create_app() -> FastAPI:
     app = FastAPI(
